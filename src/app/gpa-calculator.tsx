@@ -8,16 +8,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { GPACircle } from "@/components/gpa-circle"
-import { calculateGPA, GradeEntry, type Grade, type Semester } from "../../utils/calculateGPA"
+import { calculateGPA, calculateGPAWithPrevious, GradeEntry, type Grade, type Semester } from "../../utils/calculateGPA"
 import { cn } from "@/lib/utils"
 import { Pencil, Trash2, Calculator, School } from "lucide-react"
 import { ThemeToggle } from "@/components/theme-toggle"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 
-export default function GPACalculator() {
+
+interface GPACalculatorProps {
+  previousGPA?: number
+  previousCredits?: number
+}
+
+export default function GPACalculator({ previousGPA, previousCredits }: GPACalculatorProps) {
   const [semesters, setSemesters] = useState<Semester[]>([{ name: "Semester 1", grades: [] }])
   const [isInitialized, setIsInitialized] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-
+  const pathname = usePathname()
+  const showPreviousButton = pathname !== "/previous-gpa"
   // Move localStorage logic to useEffect
   useEffect(() => {
     const loadData = async () => {
@@ -76,7 +85,9 @@ export default function GPACalculator() {
     setSemesters([...semesters, { name: `Semester ${semesters.length + 1}`, grades: [] }])
   }
 
-  const [gpa] = calculateGPA(semesters)
+  const [gpa] = previousGPA !== undefined && previousCredits !== undefined
+    ? calculateGPAWithPrevious(semesters, previousGPA, previousCredits)
+    : calculateGPA(semesters)
 
   const updateSemesterName = (index: number, name: string) => {
     const updatedSemesters = [...semesters]
@@ -133,18 +144,27 @@ export default function GPACalculator() {
   return (
     <div className="pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold flex items-center gap-2">
-              <Calculator className="h-8 w-8 text-primary" />
-              GPA Calculator
-            </h1>
-            <p className="text-muted-foreground mt-1">For MAMM 📚✨</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold flex items-center gap-2">
+                <Calculator className="h-7 w-7 sm:h-8 sm:w-8 text-primary" />
+                GPA Calculator
+              </h1>
+              <p className="text-muted-foreground mt-1">For MAMM 📚✨</p>
+            </div>
+            {showPreviousButton && (
+              <Link href="/previous-gpa" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto h-9 sm:h-10">
+                  Calculate with Previous GPA
+                </Button>
+              </Link>
+            )}
           </div>
           <ThemeToggle />
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             <AnimatePresence mode="popLayout">
               {semesters.map((semester, semesterIndex) => (
                 <motion.div
@@ -197,14 +217,17 @@ export default function GPACalculator() {
                           initial={{ opacity: 0, x: -20 }}
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: 20 }}
-                          className="grid grid-cols-12 gap-3 items-center"
+                          className="grid grid-cols-12 gap-2 sm:gap-3 items-center"
                         >
-                          <Input className="col-span-5" placeholder="Course name" />
+                          <Input 
+                            className="col-span-12 sm:col-span-5 text-sm" 
+                            placeholder="Course name" 
+                          />
                           <Select
                             value={grade}
                             onValueChange={(value: Grade) => updateGrade(semesterIndex, courseIndex, value)}
                           >
-                            <SelectTrigger className={cn("col-span-3", getGradeColor(grade))}>
+                            <SelectTrigger className={cn("col-span-7 sm:col-span-3 text-sm", getGradeColor(grade))}>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -219,7 +242,7 @@ export default function GPACalculator() {
                             type="number"
                             value={credits}
                             onChange={(e) => updateCredits(semesterIndex, courseIndex, Number(e.target.value))}
-                            className="col-span-3"
+                            className="col-span-4 sm:col-span-3 text-sm"
                             min={0}
                             max={99}
                           />
@@ -269,9 +292,9 @@ export default function GPACalculator() {
           </div>
           <div className="lg:col-span-1">
             <div className="sticky top-8">
-              <Card className="p-6 border-t-4 border-t-primary">
+              <Card className="p-4 sm:p-6 border-t-4 border-t-primary">
                 <div className="flex justify-center">
-                  <GPACircle gpa={gpa} size={240} />
+                  <GPACircle gpa={gpa} size={200} />
                 </div>
               </Card>
             </div>
